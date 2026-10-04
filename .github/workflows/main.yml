@@ -17,15 +17,18 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Dependencies & Sync
+      - name: Install Dependencies
         run: |
           npm install
-          npx cap sync ios
+          npm install -g @capacitor/cli
 
-      - name: Fix Shell Script Permissions for macOS
+      - name: Fix Permissions for macOS
         run: |
-          chmod -R +x node_modules/.bin/ || true
-          find ios/ -name "*.sh" -exec chmod +x {} \; || true
+          chmod -R +x node_modules/ || true
+
+      - name: Sync Capacitor iOS
+        run: |
+          cap sync ios
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
