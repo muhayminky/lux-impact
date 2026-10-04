@@ -16,11 +16,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
         run: |
-          npm ci
+          npm install
           npx cap sync ios
 
       - name: Setup Xcode
@@ -31,4 +30,4 @@ jobs:
       - name: Build iOS Xcode Archive
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Release clean archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO
+          xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Release clean archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" BUILD_DIR=build
