@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LUX IMPACTOR</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    :root {
+      --primary-color: #ff6b00;
+      --primary-glow: rgba(255, 107, 0, 0.6);
+      --bg-dark: #0d0905;
+      --card-bg: #1c130b;
+      --border-color: #3d2817;
+      --pad-bg: #2b1c10;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      transition: background-color 0.8s ease;
+    }
+
+    #fx-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    #game-over-flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(239, 68, 68, 0.4);
+      z-index: 12;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease-out;
+    }
+
+    #game-over-flash.active {
+      opacity: 1;
+    }
+
+    #game-over-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 15;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #game-over-overlay.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    #game-over-overlay.fade-out {
+      opacity: 0;
+      transform: scale(1.05);
+      transition: opacity 1.2s ease-out, transform 1.2s ease-out;
+    }
+
+    .game-over-title {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: #ef4444;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      text-shadow: 0 0 25px rgba(239, 68, 68, 0.8), 0 0 50px rgba(239, 68, 68, 0.4);
+      text-align: center;
+    }
+
+    .game-over-subtitle {
+      font-size: 1.2rem;
+      color: #f87171;
+      margin-top: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 2;
+      margin: auto 0;
+    }
+
+    h1 {
+      font-size: 1.575rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--primary-color);
+      text-shadow: 0 0 18px var(--primary-glow), 0 0 6px var(--primary-color);
+      transition: color 0.5s, text-shadow 0.5s;
+    }
+
+    .health-bar-container {
+      width: 100%;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      transition: background 0.5s, border-color 0.5s;
+    }
+
+    .health-bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 0.95rem;
+      letter-spacing: 1px;
+    }
+
+    .health-bar-track {
+      width: 100%;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .health-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, var(--primary-color));
+      box-shadow: 0 0 12px var(--primary-glow);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      width: 100%;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: background 0.5s, border-color 0.5s;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+    }
+
+    .score-val, .level-val, .highscore-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      text-shadow: 0 0 10px var(--primary-glow);
+      transition: color 0.5s, text-shadow 0.5s;
+    }
+
+    .highscore-val {
+      color: #eab308;
+      text-shadow: 0 0 10px rgba(234, 179, 8, 0.6);
+    }
+
+    .inline-restart-btn {
+      background: var(--card-bg);
+      border: 2px solid var(--primary-color);
+      color: var(--primary-color);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--primary-glow);
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      position: relative;
+      left: 15%;
+    }
+
+    .inline-restart-btn:active {
+      transform: scale(0.92);
+      background: var(--primary-color);
+      color: #ffffff;
+    }
+
+    .grid-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 16px;
+      padding: 4px;
+      background: transparent;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .grid-wrapper.fade-out {
+      opacity: 0.1;
+      transform: scale(0.95);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      height: 100%;
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+      transition: background 0.5s, border-color 0.5s;
+    }
+
+    .pad {
+      background: var(--pad-bg);
+      border-radius: 8px;
+      border: 3px solid rgba(255, 107, 0, 0.81);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 900;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
+      touch-action: manipulation;
+      transform: none !important;
+      transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+    }
+
+    .pad:active {
+      transform: scale(0.96) !important;
+    }
+
+    .pad.top-pad-0 { border-color: rgba(255, 75, 0, 0.81) !important; }
+    .pad.top-pad-1 { border-color: rgba(255, 122, 25, 0.81) !important; }
+    .pad.top-pad-2 { border-color: rgba(255, 148, 60, 0.81) !important; }
+    .pad.top-pad-3 { border-color: rgba(255, 175, 95, 0.81) !important; }
+
+    .pad.bottom-pad-4 { border-color: rgba(10, 92, 31, 0.81) !important; }
+    .pad.bottom-pad-5 { border-color: rgba(15, 142, 73, 0.81) !important; }
+    .pad.bottom-pad-6 { border-color: rgba(41, 166, 103, 0.81) !important; }
+    .pad.bottom-pad-7 { border-color: rgba(68, 195, 127, 0.81) !important; }
+    .pad.bottom-pad-8 { border-color: rgba(103, 211, 158, 0.81) !important; }
+
+    .pad.active-pad {
+      background: var(--primary-color) !important;
+      border-color: #ffffff !important;
+      box-shadow: 0 0 40px 8px var(--primary-glow), 0 0 20px 2px #ffffff, inset 0 0 20px rgba(255, 255, 255, 0.7);
+      transform: none !important;
+    }
+
+    .pad-content {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+      animation: contentPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes contentPopIn {
+      0% { opacity: 0; transform: scale(0.2); }
+      70% { transform: scale(1.15); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .start-overlay-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 65%;
+      height: 56px;
+      background: var(--card-bg);
+      color: var(--primary-color);
+      border: 3px solid var(--primary-color);
+      border-radius: 12px;
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 8;
+      box-shadow: 0 0 20px var(--primary-glow), inset 0 0 10px var(--primary-glow);
+      animation: startGlowPulse 1.2s infinite alternate;
+      transition: opacity 0.3s ease, transform 0.2s ease, background 0.5s, color 0.5s, border-color 0.5s;
+    }
+
+    .start-overlay-btn.hidden {
+      display: none;
+    }
+
+    .start-overlay-btn:active {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+
+    @keyframes startGlowPulse {
+      from { box-shadow: 0 0 12px var(--primary-glow); }
+      to { box-shadow: 0 0 28px var(--primary-color); }
+    }
+
+    .status-msg {
+      min-height: 28px;
+      font-size: 1.1rem;
+      color: #e4e4e7;
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    #level-win-modal, #tip-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .win-modal-box {
+      background: var(--card-bg);
+      border: 3px solid var(--primary-color);
+      box-shadow: 0 0 30px var(--primary-glow);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .win-modal-title {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--primary-color);
+      text-shadow: 0 0 10px var(--primary-glow);
+      letter-spacing: 2px;
+    }
+
+    .win-modal-subtitle {
+      font-size: 1.05rem;
+      color: #f4f4f5;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .continue-btn {
+      background: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      cursor: pointer;
+      box-shadow: 0 0 15px var(--primary-glow);
+      transition: transform 0.1s, filter 0.2s;
+      width: 100%;
+    }
+
+    .continue-btn:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="fx-canvas"></canvas>
+  <div id="game-over-flash"></div>
+
+  <div id="game-over-overlay">
+    <div class="game-over-title">GAME OVER</div>
+    <div class="game-over-subtitle" id="game-over-reason">WRONG PAD!</div>
+  </div>
+
+  <div id="tip-modal">
+    <div class="win-modal-box">
+      <div class="win-modal-title">TIP</div>
+      <div class="win-modal-subtitle">Remember the sequence of the pads, and when they stop flashing, tap on them</div>
+      <button class="continue-btn" id="tip-ok-btn">OK</button>
+    </div>
+  </div>
+
+  <div id="level-win-modal">
+    <div class="win-modal-box">
+      <div class="win-modal-title" id="win-modal-title">Yayy ! You Won</div>
+      <div class="win-modal-subtitle" id="win-modal-subtitle">Continue to Next Level?</div>
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+        <button class="continue-btn" id="continue-btn">CONTINUE</button>
+        <button class="continue-btn" id="dropdown-btn" style="display: none; background: #ef4444; font-size: 1.3rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 15px rgba(239, 68, 68, 0.8); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);">DROP DOWN</button>
+        <button class="continue-btn" id="revive-btn" style="display: none; background: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);">REVIVE</button>
+        <button class="continue-btn" id="restart-modal-btn" style="display: none; background: #ff6b00; box-shadow: 0 0 15px rgba(255, 107, 0, 0.6);">RESTART</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>LUX IMPACTOR</h1>
+
+    <div class="health-bar-container">
+      <div class="health-bar-header">
+        <span>ROUND PROGRESS</span>
+        <span id="health-num">0 / 5</span>
+      </div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill" id="health-fill"></div>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-box">
+        <span class="stat-label">SCORE</span>
+        <span class="score-val" id="score">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">HIGH SCORE</span>
+        <span class="highscore-val" id="highscore">0</span>
+      </div>
+      <div class="stat-box" style="flex-direction: row; gap: 8px; align-items: center;">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <span class="stat-label">LEVEL</span>
+          <span class="level-val" id="level">1</span>
+        </div>
+        <button class="inline-restart-btn" id="inline-restart-btn">RESTART</button>
+      </div>
+    </div>
+
+    <div class="grid-wrapper" id="grid-wrapper">
+      <div class="grid" id="grid"></div>
+      <button class="start-overlay-btn" id="start-btn">START</button>
+    </div>
+
+    <div class="status-msg" id="status">Tap START to play</div>
+  </div>
+
+  <script>
+    const EMOJI_POOL = ['🏀', '🥎', '🛣', '🦅', '🎯', '⚡', '🎉', '👊', '✊'];
+    let padNumbers = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let hasShownInitialTip = false;
+
+    function applyThemeByColor(primaryHex, glowRgba, bgHex, cardHex, padHex, borderHex) {
+      document.documentElement.style.setProperty('--primary-color', primaryHex);
+      document.documentElement.style.setProperty('--primary-glow', glowRgba);
+      document.documentElement.style.setProperty('--bg-dark', bgHex);
+      document.documentElement.style.setProperty('--card-bg', cardHex);
+      document.documentElement.style.setProperty('--pad-bg', padHex);
+      document.documentElement.style.setProperty('--border-color', borderHex);
+    }
+
+    function getLevelRoundTheme(lvl, rProg) {
+      if (lvl === 1) {
+        return {
+          primary: '#ff6b00',
+          glow: 'rgba(255, 107, 0, 0.6)',
+          bg: '#0d0905',
+          card: '#1c130b',
+          pad: '#2b1c10',
+          border: '#3d2817'
+        };
+      } else if (lvl === 2) {
+        return {
+          primary: '#f3d815',
+          glow: 'rgba(243, 216, 21, 0.65)',
+          bg: '#0d0c05',
+          card: '#1c1a0b',
+          pad: '#2b2610',
+          border: '#3d3417'
+        };
+      } else if (lvl === 3) {
+        return {
+          primary: '#aa55bb',
+          glow: 'rgba(170, 85, 187, 0.65)',
+          bg: '#0b050d',
+          card: '#1b101f',
+          pad: '#281730',
+          border: '#3d2247'
+        };
+      } else {
+        const paletteIndex = (lvl - 4) % 3;
+        const step = rProg % 3;
+        if (paletteIndex === 0) {
+          if (step === 1) return { primary: '#ffffff', glow: 'rgba(255, 255, 255, 0.65)', bg: '#0a0a0a', card: '#161616', pad: '#222222', border: '#333333' };
+          else if (step === 2) return { primary: '#a855f7', glow: 'rgba(168, 85, 247, 0.65)', bg: '#0b050d', card: '#18101c', pad: '#25172b', border: '#382240' };
+          else return { primary: '#3b82f6', glow: 'rgba(59, 130, 246, 0.65)', bg: '#05080d', card: '#10161c', pad: '#17222b', border: '#223440' };
+        } else if (paletteIndex === 1) {
+          if (step === 1) return { primary: '#06b6d4', glow: 'rgba(6, 182, 212, 0.65)', bg: '#050b0d', card: '#101c1f', pad: '#172b30', border: '#224047' };
+          else if (step === 2) return { primary: '#ec4899', glow: 'rgba(236, 72, 153, 0.65)', bg: '#0d0509', card: '#1f1015', pad: '#301720', border: '#47222f' };
+          else return { primary: '#10b981', glow: 'rgba(16, 185, 129, 0.65)', bg: '#050d0a', card: '#101f16', pad: '#173022', border: '#224732' };
+        } else {
+          if (step === 1) return { primary: '#ef4444', glow: 'rgba(239, 68, 68, 0.65)', bg: '#0d0505', card: '#1f1010', pad: '#301717', border: '#472222' };
+          else if (step === 2) return { primary: '#f59e0b', glow: 'rgba(245, 158, 11, 0.65)', bg: '#0d0a05', card: '#1f1910', pad: '#302617', border: '#473822' };
+          else return { primary: '#6366f1', glow: 'rgba(99, 102, 241, 0.65)', bg: '#07050d', card: '#12101f', pad: '#1b1730', border: '#282247' };
+        }
+      }
+    }
+
+    function applyLevelTheme(lvl, rProg = 0) {
+      const theme = getLevelRoundTheme(lvl, rProg);
+      applyThemeByColor(theme.primary, theme.glow, theme.bg, theme.card, theme.pad, theme.border);
+    }
+
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('lumin_high_score') || '0', 10);
+    let level = 1;
+    let roundProgress = 0;
+    let sequence = [];
+    let playerStepIndex = 0;
+    let isPlaying = false;
+    let isShowingSequence = false;
+    let isGameOverSequence = false;
+    let padEmojis = [];
+    let dropDownCount = 0;
+    let reviveCount = 0;
+
+    let audioCtx = null;
+    let musicTimer = null;
+    let musicGainNode = null;
+    let modalMusicTimer = null;
+    let modalMusicActive = false;
+    let audioUnlocked = false;
+
+    const gridEl = document.getElementById('grid');
+    const gridWrapperEl = document.getElementById('grid-wrapper');
+    const startBtn = document.getElementById('start-btn');
+    const statusEl = document.getElementById('status');
+    const scoreEl = document.getElementById('score');
+    const highscoreEl = document.getElementById('highscore');
+    const levelEl = document.getElementById('level');
+    const healthFillEl = document.getElementById('health-fill');
+    const healthNumEl = document.getElementById('health-num');
+    const gameOverFlashEl = document.getElementById('game-over-flash');
+    const gameOverOverlayEl = document.getElementById('game-over-overlay');
+    const gameOverReasonEl = document.getElementById('game-over-reason');
+    const levelWinModal = document.getElementById('level-win-modal');
+    const tipModal = document.getElementById('tip-modal');
+    const tipOkBtn = document.getElementById('tip-ok-btn');
+    const winModalTitle = document.getElementById('win-modal-title');
+    const winModalSubtitle = document.getElementById('win-modal-subtitle');
+    const continueBtn = document.getElementById('continue-btn');
+    const dropDownBtn = document.getElementById('dropdown-btn');
+    const reviveBtn = document.getElementById('revive-btn');
+    const restartModalBtn = document.getElementById('restart-modal-btn');
+    const inlineRestartBtn = document.getElementById('inline-restart-btn');
+
+    const canvas = document.getElementById('fx-canvas');
+    const ctx = canvas.getContext('2d');
+
+    highscoreEl.textContent = highScore;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let rainParticles = [];
+    let rainTypeIndex = 0;
+    let isRaining = false;
+    let rainAnimFrameId = null;
+    const RAIN_TYPES = ['CATS_DOGS', 'THUNDERSTORM', 'PUNCHES', 'CONFETTI'];
+
+    function startRainEffect() {
+      rainParticles = [];
+      isRaining = true;
+      const count = 45;
+      const currentType = RAIN_TYPES[rainTypeIndex % RAIN_TYPES.length];
+      rainTypeIndex++;
+
+      for (let i = 0; i < count; i++) {
+        let p = {
+          x: Math.random() * canvas.width,
+          y: Math.random() * -canvas.height,
+          speedY: (5 + Math.random() * 8) * 0.8 * 0.8,
+          speedX: (Math.random() - 0.5) * 1.6,
+          size: 26 + Math.random() * 18,
+          symbol: '',
+          color: '',
+          rotAngle: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.015
+        };
+
+        if (currentType === 'CATS_DOGS') {
+          p.symbol = Math.random() > 0.5 ? '🐱' : '🐶';
+        } else if (currentType === 'PUNCHES') {
+          p.symbol = Math.random() > 0.5 ? '🥊' : '👊';
+        } else if (currentType === 'CONFETTI') {
+          p.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+          p.size = 10 + Math.random() * 12;
+        } else if (currentType === 'THUNDERSTORM') {
+          p.symbol = Math.random() > 0.7 ? '⚡' : '🎉';
+          p.speedY = (12 + Math.random() * 8) * 0.8 * 0.8;
+        }
+        rainParticles.push(p);
+      }
+      if (rainAnimFrameId) cancelAnimationFrame(rainAnimFrameId);
+      animateRain();
+    }
+
+    function animateRain() {
+      if (!isRaining) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let p of rainParticles) {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotAngle += p.rotSpeed;
+        const maxRot = 10 * (Math.PI / 180);
+        const currentRot = Math.sin(p.rotAngle) * maxRot;
+
+        ctx.save();
+        ctx.translate(p.x + p.size / 2, p.y + p.size / 2);
+        ctx.rotate(currentRot);
+
+        if (p.symbol) {
+          ctx.font = `${p.size}px sans-serif`;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 4;
+          ctx.fillText(p.symbol, -p.size / 2, p.size / 2);
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.5);
+        }
+        ctx.restore();
+
+        if (p.y > canvas.height) {
+          p.y = -30;
+          p.x = Math.random() * canvas.width;
+        }
+      }
+      rainAnimFrameId = requestAnimationFrame(animateRain);
+    }
+
+    function stopRainEffect() {
+      isRaining = false;
+      if (rainAnimFrameId) {
+        cancelAnimationFrame(rainAnimFrameId);
+        rainAnimFrameId = null;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    for (let i = 0; i < 9; i++) {
+      const pad = document.createElement('div');
+      pad.className = 'pad';
+      if (i < 4) {
+        pad.classList.add(`top-pad-${i}`);
+      } else {
+        pad.classList.add(`bottom-pad-${i}`);
+      }
+      pad.dataset.index = i;
+      
+      pad.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        handlePadClick(i);
+      });
+      gridEl.appendChild(pad);
+    }
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function unlockAudioIOS() {
+      initAudio();
+      if (!audioCtx) return;
+
+      if (!audioUnlocked) {
+        const buffer = audioCtx.createBuffer(1, 1, 22050);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        if (source.start) {
+          source.start(0);
+        } else if (source.noteOn) {
+          source.noteOn(0);
+        }
+        audioUnlocked = true;
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    const iosUnlockEvents = ['touchstart', 'touchend', 'pointerdown', 'click'];
+    iosUnlockEvents.forEach(evt => {
+      document.addEventListener(evt, unlockAudioIOS, { once: false, passive: true });
+    });
+
+    function playSparklingStartChime() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+      
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
+
+        gain.gain.setValueAtTime(0, now + (idx * 0.08));
+        gain.gain.linearRampToValueAtTime(0.18, now + (idx * 0.08) + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (idx * 0.08) + 0.35);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + (idx * 0.08));
+        osc.stop(now + (idx * 0.08) + 0.35);
+      });
+    }
+
+    function playCrowdBooHooSound() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const bufferSize = audioCtx.sampleRate * 1.5;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(300, now);
+      filter.Q.setValueAtTime(2.0, now);
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.01, now);
+      noiseGain.gain.linearRampToValueAtTime(0.18, now + 0.2);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      whiteNoise.start(now);
+
+      const booFreqs = [180, 150, 130, 110];
+      booFreqs.forEach((baseFreq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(baseFreq, now + (index * 0.05));
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.55, now + 0.8 + (index * 0.05));
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + (index * 0.05));
+        osc.stop(now + 0.9 + (index * 0.05));
+      });
+    }
+
+    function playCrowdWooHooSound() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const bufferSize = audioCtx.sampleRate * 1.5;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(220, now);
+      filter.Q.setValueAtTime(1.5, now);
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.01, now);
+      noiseGain.gain.linearRampToValueAtTime(0.22, now + 0.3);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      whiteNoise.start(now);
+
+      const wooFreqs = [140, 180, 220, 200];
+      wooFreqs.forEach((baseFreq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(baseFreq, now + (index * 0.08));
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.4, now + 0.6 + (index * 0.08));
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.09, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + (index * 0.08));
+        osc.stop(now + 1.1 + (index * 0.08));
+      });
+    }
+
+    function playAirWhooshSmackPunch() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const bufferSize = audioCtx.sampleRate * 0.22;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1200, now);
+      filter.frequency.exponentialRampToValueAtTime(250, now + 0.22);
+      filter.Q.setValueAtTime(2.5, now);
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.3, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      whiteNoise.start(now);
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(160, now + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.28);
+
+      gain.gain.setValueAtTime(0.55, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now + 0.05);
+      osc.stop(now + 0.28);
+    }
+
+    function playBulbOnSound() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(450, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.2);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+
+    function playPopSound() {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    }
+
+    const ARCADE_PSG_PATTERN = [
+      { lead: 523.25, bass: 130.81, dur: 0.160 },
+      { lead: 659.25, bass: 0,      dur: 0.160 },
+      { lead: 783.99, bass: 0,      dur: 0.160 },
+      { lead: 1046.5, bass: 130.81, dur: 0.160 },
+      { lead: 783.99, bass: 0,      dur: 0.160 },
+      { lead: 659.25, bass: 0,      dur: 0.160 },
+      { lead: 587.33, bass: 146.83, dur: 0.160 },
+      { lead: 698.46, bass: 0,      dur: 0.160 },
+      { lead: 880.00, bass: 0,      dur: 0.160 },
+      { lead: 1174.6, bass: 146.83, dur: 0.160 },
+      { lead: 880.00, bass: 0,      dur: 0.160 },
+      { lead: 698.46, bass: 0,      dur: 0.160 }
+    ];
+
+    function playSynthTone(now, duration, freq, isBass = false, customGainNode = null) {
+      if (!audioCtx || freq <= 0) return;
+      const targetGainNode = customGainNode || musicGainNode;
+      if (!targetGainNode) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const vol = isBass ? 0.085 : 0.055;
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.setValueAtTime(vol * 0.8, now + duration * 0.6);
+      gain.gain.setValueAtTime(0, now + duration * 0.95);
+
+      osc.connect(gain);
+      gain.connect(targetGainNode);
+
+      osc.start(now);
+      osc.stop(now + duration);
+    }
+
+    let musicIndex = 0;
+
+    function startArcadeMusic(fadeIn = false) {
+      if (level <= 2 && !modalMusicActive) return;
+
+      initAudio();
+      stopArcadeMusic();
+
+      musicGainNode = audioCtx.createGain();
+      musicGainNode.connect(audioCtx.destination);
+
+      if (fadeIn) {
+        musicGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        musicGainNode.gain.linearRampToValueAtTime(0.50, audioCtx.currentTime + 1.2);
+      } else {
+        musicGainNode.gain.setValueAtTime(0.50, audioCtx.currentTime);
+      }
+
+      musicIndex = 0;
+
+      function stepMusicLoop() {
+        const pattern = ARCADE_PSG_PATTERN;
+        musicIndex = musicIndex % pattern.length;
+
+        const note = pattern[musicIndex];
+        const now = audioCtx.currentTime;
+        const durSec = note.dur;
+
+        if (note.lead > 0) {
+          playSynthTone(now, durSec, note.lead, false, musicGainNode);
+        }
+        if (note.bass > 0) {
+          playSynthTone(now, durSec, note.bass, true, musicGainNode);
+        }
+
+        musicIndex++;
+        musicTimer = setTimeout(stepMusicLoop, durSec * 1000);
+      }
+
+      stepMusicLoop();
+    }
+
+    function stopArcadeMusic() {
+      if (musicTimer) {
+        clearTimeout(musicTimer);
+        musicTimer = null;
+      }
+    }
+
+    function updateRoundBar() {
+      healthNumEl.textContent = `${roundProgress} / 5`;
+      healthFillEl.style.width = `${Math.min(100, (roundProgress / 5) * 100)}%`;
+      refreshPadLabels();
+    }
+
+    function refreshPadLabels() {
+      const pads = document.querySelectorAll('.pad');
+      pads.forEach((pad, i) => {
+        const contentSpan = pad.querySelector('.pad-content');
+        if (roundProgress >= 3) {
+          if (!contentSpan) {
+            pad.innerHTML = `<span class="pad-content">${padNumbers[i]}</span>`;
+            playPopSound();
+          } else {
+            contentSpan.textContent = padNumbers[i];
+          }
+        } else {
+          if (!isShowingSequence && !pad.classList.contains('active-pad')) {
+            pad.innerHTML = '';
+          }
+        }
+      });
+    }
+
+    function checkHighScore() {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('lumin_high_score', highScore);
+        highscoreEl.textContent = highScore;
+      }
+    }
+
+    function resetGame() {
+      score = 0;
+      level = 1;
+      roundProgress = 0;
+      isPlaying = false;
+      isShowingSequence = false;
+      isGameOverSequence = false;
+      dropDownCount = 0;
+      reviveCount = 0;
+      sequence = [];
+      playerStepIndex = 0;
+      padNumbers = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      scoreEl.textContent = score;
+      levelEl.textContent = level;
+      statusEl.textContent = "Tap START to play";
+      gridWrapperEl.classList.remove('fade-out');
+      startBtn.classList.remove('hidden');
+      gameOverOverlayEl.className = '';
+      levelWinModal.style.display = 'none';
+      tipModal.style.display = 'none';
+      stopRainEffect();
+      applyLevelTheme(1, 0);
+      updateRoundBar();
+      clearPads();
+      stopArcadeMusic();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+    }
+
+    function startGame() {
+      if (isGameOverSequence) return;
+      playSparklingStartChime();
+
+      if (!hasShownInitialTip) {
+        hasShownInitialTip = true;
+        tipModal.style.display = 'flex';
+        return;
+      }
+
+      executeGameStartSequence();
+    }
+
+    tipOkBtn.addEventListener('click', () => {
+      playAirWhooshSmackPunch();
+      tipModal.style.display = 'none';
+      executeGameStartSequence();
+    });
+
+    async function executeGameStartSequence() {
+      resetGame();
+      isPlaying = true;
+      startBtn.classList.add('hidden');
+
+      statusEl.textContent = "Get ready...";
+      await new Promise(resolve => setTimeout(resolve, 800));
+      if (!isPlaying) return;
+
+      startArcadeMusic(true);
+      runLevelRound();
+    }
+
+    startBtn.addEventListener('click', startGame);
+
+    function shuffleEmojisForPads() {
+      let shuffled = [...EMOJI_POOL];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      padEmojis = shuffled;
+    }
+
+    function clearPads() {
+      const pads = document.querySelectorAll('.pad');
+      pads.forEach((pad, i) => {
+        pad.className = 'pad';
+        if (i < 4) {
+          pad.classList.add(`top-pad-${i}`);
+        } else {
+          pad.classList.add(`bottom-pad-${i}`);
+        }
+        if (roundProgress >= 3) {
+          pad.innerHTML = `<span class="pad-content">${padNumbers[i]}</span>`;
+        } else {
+          pad.innerHTML = '';
+        }
+      });
+    }
+
+    function flashPad(padIndex, duration = 400, pauseMs = 180) {
+      return new Promise(async (resolve) => {
+        const pad = gridEl.children[padIndex];
+        if (!pad) return resolve();
+
+        playBulbOnSound();
+
+        if (roundProgress >= 3) {
+          pad.innerHTML = `<span class="pad-content">${padNumbers[padIndex]}</span>`;
+        } else if (level > 1) {
+          pad.innerHTML = `<span class="pad-content">${padEmojis[padIndex] || '⚡'}</span>`;
+        } else {
+          pad.innerHTML = '';
+        }
+        pad.classList.add('active-pad');
+
+        await new Promise(res => setTimeout(res, duration));
+        
+        if (roundProgress >= 3) {
+          pad.innerHTML = `<span class="pad-content">${padNumbers[padIndex]}</span>`;
+        } else {
+          pad.innerHTML = '';
+        }
+        pad.classList.remove('active-pad');
+        await new Promise(res => setTimeout(res, pauseMs));
+        resolve();
+      });
+    }
+
+    function triggerGameOverSequence(reason) {
+      isPlaying = false;
+      isGameOverSequence = true;
+      isShowingSequence = false;
+      stopArcadeMusic();
+      stopRainEffect();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      checkHighScore();
+
+      if (level >= 3 && dropDownCount < 2) {
+        dropDownCount++;
+        winModalTitle.textContent = "DROP DOWN";
+        winModalSubtitle.textContent = `Level ${level} Failed. Drop down to Level ${level - 1}? (${2 - dropDownCount} Drop Downs left, ${2 - reviveCount} Revives left)`;
+        continueBtn.style.display = 'none';
+        dropDownBtn.style.display = 'block';
+        reviveBtn.style.display = 'block';
+        restartModalBtn.style.display = 'none';
+        levelWinModal.style.display = 'flex';
+        playCrowdBooHooSound();
+        return;
+      }
+
+      if (level === 2 && reviveCount < 2) {
+        reviveCount++;
+        winModalTitle.textContent = "LEVEL 2 FAILED";
+        winModalSubtitle.textContent = `Revive at Level 2? (${2 - reviveCount} Revives left)`;
+        continueBtn.style.display = 'none';
+        dropDownBtn.style.display = 'none';
+        reviveBtn.style.display = 'block';
+        restartModalBtn.style.display = 'block';
+        levelWinModal.style.display = 'flex';
+        playCrowdBooHooSound();
+        return;
+      }
+
+      playCrowdBooHooSound();
+
+      gameOverFlashEl.classList.add('active');
+      setTimeout(() => gameOverFlashEl.classList.remove('active'), 150);
+
+      gridWrapperEl.classList.add('fade-out');
+      gameOverReasonEl.textContent = reason;
+      gameOverOverlayEl.className = 'show';
+
+      setTimeout(() => {
+        gameOverOverlayEl.className = 'show fade-out';
+      }, 500);
+
+      setTimeout(() => {
+        gameOverOverlayEl.className = '';
+        clearPads();
+        startBtn.classList.remove('hidden');
+        gridWrapperEl.classList.remove('fade-out');
+        statusEl.textContent = `Final Score: ${score} | Tap START to play again`;
+        isGameOverSequence = false;
+      }, 1600);
+    }
+
+    async function runLevelRound() {
+      if (!isPlaying) return;
+
+      isShowingSequence = true;
+      if (level > 1) {
+        shuffleEmojisForPads();
+      }
+
+      let countToAdd = roundProgress === 0 ? (Math.random() > 0.5 ? 2 : 3) : (roundProgress + 2);
+      sequence = [];
+      let lastIdx = -1;
+
+      for (let i = 0; i < countToAdd; i++) {
+        let availableIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        if (lastIdx !== -1) {
+          availableIndices = availableIndices.filter(idx => {
+            let r1 = Math.floor(lastIdx / 3), c1 = lastIdx % 3;
+            let r2 = Math.floor(idx / 3), c2 = idx % 3;
+            let dist = Math.abs(r1 - r2) + Math.abs(c1 - c2);
+            return dist >= 2;
+          });
+          if (availableIndices.length === 0) {
+            availableIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(idx => idx !== lastIdx);
+          }
+        }
+        let nextPad = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+        sequence.push(nextPad);
+        lastIdx = nextPad;
+      }
+
+      statusEl.textContent = `Watch sequence (${sequence.length} flashes, Round ${roundProgress + 1}/5)...`;
+
+      for (let pIdx of sequence) {
+        if (!isPlaying) return;
+        await flashPad(pIdx, 380, 180);
+      }
+
+      isShowingSequence = false;
+      statusEl.textContent = "Your turn! Tap the pads";
+      playerStepIndex = 0;
+    }
+
+    function handlePadClick(padIndex) {
+      if (!isPlaying || isShowingSequence || isGameOverSequence) return;
+
+      playAirWhooshSmackPunch();
+
+      padNumbers[padIndex]++;
+      playPopSound();
+
+      const pad = gridEl.children[padIndex];
+      if (pad) {
+        if (roundProgress >= 3) {
+          pad.innerHTML = `<span class="pad-content">${padNumbers[padIndex]}</span>`;
+        }
+        pad.classList.add('active-pad');
+        setTimeout(() => pad.classList.remove('active-pad'), 140);
+      }
+
+      const expectedPad = sequence[playerStepIndex];
+
+      if (padIndex === expectedPad) {
+        playerStepIndex++;
+        
+        if (playerStepIndex === sequence.length) {
+          roundProgress += 1;
+          
+          applyLevelTheme(level, roundProgress);
+
+          const roundPoints = level === 1 ? 1000 : 2000;
+          const previousLevelsTotal = (level - 1) * 5000;
+          score = previousLevelsTotal + (roundProgress * roundPoints);
+          scoreEl.textContent = score;
+          checkHighScore();
+
+          updateRoundBar();
+
+          if (roundProgress >= 5) {
+            roundProgress = 0;
+            padNumbers = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            let completedLevel = level;
+            level += 1;
+            levelEl.textContent = level;
+            sequence = [];
+            
+            applyLevelTheme(level, roundProgress);
+
+            winModalTitle.textContent = "Yayy ! You Won";
+            winModalSubtitle.textContent = "Continue to Next Level?";
+            continueBtn.style.display = 'block';
+            dropDownBtn.style.display = 'none';
+            reviveBtn.style.display = 'none';
+            restartModalBtn.style.display = 'none';
+
+            if (completedLevel >= 3) {
+              startRainEffect();
+            } else {
+              stopRainEffect();
+            }
+
+            levelWinModal.style.display = 'flex';
+            playCrowdWooHooSound();
+
+            if (completedLevel === 2) {
+              initAudio();
+              modalMusicActive = true;
+              startArcadeMusic(true);
+              if (modalMusicTimer) clearTimeout(modalMusicTimer);
+              modalMusicTimer = setTimeout(() => {
+                stopArcadeMusic();
+                modalMusicActive = false;
+              }, 5000);
+            } else if (completedLevel >= 3) {
+              startArcadeMusic(false);
+            } else {
+              stopArcadeMusic();
+            }
+
+            return;
+          }
+
+          statusEl.textContent = "Great! Next round sequence...";
+          setTimeout(() => {
+            if (isPlaying) runLevelRound();
+          }, 600);
+        }
+      } else {
+        triggerGameOverSequence("WRONG PAD!");
+      }
+    }
+
+    continueBtn.addEventListener('click', async () => {
+      playSparklingStartChime();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      stopArcadeMusic();
+      levelWinModal.style.display = 'none';
+      if (level < 3) {
+        stopRainEffect();
+      }
+      updateRoundBar();
+      statusEl.textContent = "Get ready...";
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      isPlaying = true;
+      if (level > 2) {
+        startArcadeMusic(false);
+      }
+      runLevelRound();
+    });
+
+    dropDownBtn.addEventListener('click', async () => {
+      playSparklingStartChime();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      stopArcadeMusic();
+      levelWinModal.style.display = 'none';
+      stopRainEffect();
+
+      level = Math.max(1, level - 1);
+      levelEl.textContent = level;
+      roundProgress = 0;
+      padNumbers = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      applyLevelTheme(level, roundProgress);
+      updateRoundBar();
+
+      statusEl.textContent = `Dropped down to Level ${level}! Get ready...`;
+      gridWrapperEl.classList.remove('fade-out');
+      isGameOverSequence = false;
+      sequence = [];
+      playerStepIndex = 0;
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+      isPlaying = true;
+      if (level > 2) {
+        startArcadeMusic(false);
+      } else {
+        stopArcadeMusic();
+      }
+      runLevelRound();
+    });
+
+    reviveBtn.addEventListener('click', async () => {
+      playSparklingStartChime();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      stopArcadeMusic();
+      levelWinModal.style.display = 'none';
+      stopRainEffect();
+
+      roundProgress = 0;
+      padNumbers = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      applyLevelTheme(level, roundProgress);
+      updateRoundBar();
+
+      statusEl.textContent = `Revived at Level ${level}! Get ready...`;
+      gridWrapperEl.classList.remove('fade-out');
+      isGameOverSequence = false;
+      sequence = [];
+      playerStepIndex = 0;
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+      isPlaying = true;
+      if (level > 2) {
+        startArcadeMusic(false);
+      } else {
+        stopArcadeMusic();
+      }
+      runLevelRound();
+    });
+
+    restartModalBtn.addEventListener('click', async () => {
+      playSparklingStartChime();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      stopArcadeMusic();
+      levelWinModal.style.display = 'none';
+      gridWrapperEl.classList.remove('fade-out');
+      isGameOverSequence = false;
+      
+      highScore = 0;
+      localStorage.setItem('lumin_high_score', '0');
+      highscoreEl.textContent = highScore;
+
+      resetGame();
+      isPlaying = true;
+      startBtn.classList.add('hidden');
+      statusEl.textContent = "Get ready...";
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      startArcadeMusic(true);
+      runLevelRound();
+    });
+
+    inlineRestartBtn.addEventListener('click', async () => {
+      playSparklingStartChime();
+      if (modalMusicTimer) {
+        clearTimeout(modalMusicTimer);
+        modalMusicTimer = null;
+      }
+      modalMusicActive = false;
+      stopArcadeMusic();
+      stopRainEffect();
+      
+      highScore = 0;
+      localStorage.setItem('lumin_high_score', '0');
+      highscoreEl.textContent = highScore;
+
+      resetGame();
+      isPlaying = true;
+      startBtn.classList.add('hidden');
+      statusEl.textContent = "Get ready...";
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      startArcadeMusic(true);
+      runLevelRound();
+    });
+
+    resetGame();
+  </script>
+</body>
+</html>
